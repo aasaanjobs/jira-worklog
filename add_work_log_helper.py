@@ -1,10 +1,9 @@
 # Helper method to add a work-log against a JIRA issue.
 # Note that work will be logged as the user who's token is being used
-import json
-
 import re
-import subprocess
 import os
+
+import requests
 
 JIRA_BASE_URL = "https://aasaan-jobs.atlassian.net"
 JIRA_BOT_ADMIN_TOKEN = os.getenv('JIRA_BOT_ADMIN_TOKEN')
@@ -12,23 +11,28 @@ JIRA_BOT_ADMIN_TOKEN = os.getenv('JIRA_BOT_ADMIN_TOKEN')
 
 def _add_work_log(issue_key, work_log_str):
     """
-        Accepts a JIRA issue key/name and a work_log string and adds a work-log entry against the issue.
-        :param issue_key: JIRA card name. eg: API-988, CTS-504 etc...
-        :param work_log_str: The time that is to be logged on the issue. eg: 1d 2h 30m
-        :return:
+    Accepts a JIRA issue key/name and a work_log string and adds a work-log entry against the issue.
+    :param issue_key: JIRA card name. eg: API-988, CTS-504 etc...
+    :param work_log_str: The time that is to be logged on the issue. eg: 1d 2h 30m
+    :return:
     """
     add_work_log_endpoint = "/rest/api/3/issue/{}/worklog"
     work_log_api_url = JIRA_BASE_URL + add_work_log_endpoint.format(issue_key)
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": "Basic {}".format(JIRA_BOT_ADMIN_TOKEN)
+    }
     data = {
         "timeSpent": work_log_str,
     }
-    bash_command = "curl " \
-                   "--request POST --url '{}' " \
-                   "--header 'Accept: application/json' " \
-                   "--header 'Content-Type: application/json'  " \
-                   "--header 'Authorization: Basic {}' --data '{}'" \
-                   "".format(work_log_api_url, JIRA_BOT_ADMIN_TOKEN, json.dumps(data))
-    output = subprocess.check_output(['bash', '-c', bash_command])  # bytes object is returned
+    res = requests.post(work_log_api_url, json=data, headers=headers)
+    if res.status_code != 201:
+        print("Failed to log work on issue {}. Received error response[{}]".format(res.status_code, res.content))
+        return False
+    else:
+        print("Successfully logged {} on issue {}".format(work_log_str, issue_key))
+        return True
 
 
 def _get_jira_issue(input_str):

@@ -48,4 +48,4 @@ def _is_authentic(request):
 # start the server with the 'run()' method
 if __name__ == '__main__':
     # app.run(debug=True)
-    app.run()
+    app.run(host="0.0.0.0")
